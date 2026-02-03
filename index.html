@@ -3,75 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SMART Attendance - MMU</title>
+    <title>SMART System - Group 7</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { margin: 0; background: #0a2f5a; font-family: sans-serif; display: flex; justify-content: center; }
-        .phone-container { width: 100%; max-width: 400px; height: 100vh; background: #a8beda; position: relative; overflow-y: auto; }
-        .page { display: none; padding: 20px; text-align: center; }
-        .active { display: block; }
-        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-top: 20px; }
-        input, select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-size: 16px; }
-        button { background: #ce2029; color: white; border: none; font-weight: bold; cursor: pointer; }
-        #qr-reader { width: 100%; border-radius: 10px; margin-top: 10px; background: black; }
-        #qrcode img { margin: 0 auto; }
-        .timer { color: #ce2029; font-weight: bold; margin: 10px; }
+        :root { --mmu-blue: #0a2f5a; --mmu-red: #ce2029; --bg: #f4f7f9; }
+        body { margin: 0; background: var(--mmu-blue); font-family: 'Segoe UI', Arial, sans-serif; display: flex; justify-content: center; }
+        .app-container { width: 100%; max-width: 420px; height: 100vh; background: var(--bg); position: relative; display: flex; flex-direction: column; }
+        .header { background: var(--mmu-blue); color: white; padding: 15px; text-align: center; font-weight: bold; border-bottom: 3px solid var(--mmu-red); }
+        .page { display: none; padding: 20px; flex: 1; overflow-y: auto; text-align: center; }
+        .active { display: flex; flex-direction: column; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; }
+        button { background: var(--mmu-red); color: white; border: none; font-weight: bold; cursor: pointer; }
+        #qr-reader { width: 100% !important; border-radius: 10px; overflow: hidden; background: #000; }
+        #qrcode { background: white; padding: 10px; display: inline-block; margin: 10px auto; border: 1px solid #ddd; }
+        .log-entry { font-size: 0.8em; text-align: left; padding: 8px; border-bottom: 1px solid #eee; }
+        .audit-tag { font-weight: bold; color: var(--mmu-blue); }
     </style>
 </head>
 <body>
 
-<div class="phone-container">
+<div class="app-container">
+    <div class="header" id="navTitle">SMART ATTENDANCE</div>
+
     <div id="loginPage" class="page active">
         <div class="card">
-            <img src="https://www.mmu.edu.my/wp-content/uploads/2017/12/mmu-logo.png" style="width:120px; margin-bottom:10px;">
-            <h2>SMART Login</h2>
+            <img src="mmulogo.png" alt="MMU Logo" style="width:160px; margin-bottom:15px;" onerror="this.src='https://www.mmu.edu.my/wp-content/uploads/2017/12/mmu-logo.png'">
+            <h2 style="color: var(--mmu-blue);">Group 7 Login</h2>
             <select id="role">
-                <option value="student">Student</option>
-                <option value="lecturer">Lecturer</option>
+                <option value="student">Student (Mike/Desmond)</option>
+                <option value="lecturer">Lecturer (Liang)</option>
+                <option value="admin">Admin (Tilden)</option>
             </select>
-            <input type="email" id="email" placeholder="Email (liang@...)" autocomplete="off">
+            <input type="email" id="email" placeholder="Email (e.g., mike@student.mmu.edu.my)">
             <input type="password" id="password" placeholder="Password (123456)">
-            <button onclick="handleLogin()">Login</button>
-            <p style="font-size:12px; color:#666;">Note: Ensure "L" in liang is lowercase.</p>
+            <button onclick="handleLogin()">Sign In</button>
         </div>
     </div>
 
     <div id="studentPage" class="page">
         <div class="card">
-            <h3>Student Scanner</h3>
+            <h3 id="welcomeStudent">Student Dashboard</h3>
             <div id="qr-reader"></div>
-            <button onclick="logout()" style="background:#666;">Logout</button>
+            <button onclick="logout()" style="background:#555; margin-top:15px;">Logout</button>
         </div>
     </div>
 
     <div id="lecturerPage" class="page">
         <div class="card">
-            <h3>Lecturer View</h3>
+            <h3>Lecturer: Liang</h3>
             <div id="qrcode"></div>
-            <div class="timer" id="timer">Refreshing in: 3:00</div>
-            <button onclick="startSession()">Start 3-Min Refresh</button>
-            <button onclick="logout()" style="background:#666;">Logout</button>
+            <p id="timer" style="color: var(--mmu-red); font-weight: bold;">Refreshes in: 3:00</p>
+            <button onclick="startLecturerSession()">Generate Dynamic QR</button>
+            <button onclick="logout()" style="background:#555; margin-top:10px;">End Session</button>
+        </div>
+    </div>
+
+    <div id="adminPage" class="page">
+        <div class="card">
+            <h3>Admin Dashboard: Tilden</h3>
+            <p>Live Attendance & Fraud Detection</p>
+            <div id="auditLogs" style="height: 250px; overflow-y: auto; background: #f9f9f9; border: 1px solid #ddd; text-align: left;">
+                <div class="log-entry">Waiting for system activity...</div>
+            </div>
+            <button onclick="logout()" style="background:#555; margin-top:20px;">Logout</button>
         </div>
     </div>
 
     <div id="donePage" class="page">
         <div class="card">
-            <h1 style="color:green;">✔</h1>
-            <h2>Attendance Recorded</h2>
-            <p>Verification: Device ID & Location Logged.</p>
-            <button onclick="location.reload()">Return Home</button>
+            <h1 style="color: green;">✔</h1>
+            <h3>Attendance Verified</h3>
+            <div id="forensicData" style="text-align: left; font-size: 0.8em; background: #eee; padding: 10px; border-radius: 8px;"></div>
+            <button onclick="showPage('studentPage')" style="margin-top:20px;">Return</button>
         </div>
     </div>
 </div>
 
 <script>
     let qrRotation;
-    let scanner;
+    let html5QrCode;
+    let currentUser = "";
 
     function showPage(id) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById(id).classList.add('active');
+        document.getElementById('navTitle').innerText = id.replace('Page', '').toUpperCase();
     }
 
     function handleLogin() {
@@ -79,63 +97,79 @@
         const email = document.getElementById('email').value.trim().toLowerCase();
         const pass = document.getElementById('password').value;
 
-        // Validation for Liang's credentials
-        if (pass !== "123456") {
-            alert("Error: Incorrect Password");
-            return;
-        }
+        if (pass !== "123456") { alert("Wrong Password!"); return; }
 
-        if (role === "student" && email === "liang@student.mmu.edu.my") {
-            showPage('studentPage');
-            startCamera();
+        if (role === "student") {
+            if (email === "mike@student.mmu.edu.my" || email === "desmond@student.mmu.edu.my") {
+                currentUser = email.split('@')[0].toUpperCase();
+                document.getElementById('welcomeStudent').innerText = "Student: " + currentUser;
+                showPage('studentPage');
+                initScanner();
+            } else { alert("Student Email Not Recognized"); }
         } else if (role === "lecturer" && email === "liang@lecturer.mmu.edu.my") {
             showPage('lecturerPage');
+        } else if (role === "admin" && email === "tilden@admin.mmu.edu.my") {
+            showPage('adminPage');
         } else {
-            alert("Error: Email and Role do not match.");
+            alert("Role and Email do not match!");
         }
     }
 
-    function startCamera() {
-        scanner = new Html5Qrcode("qr-reader");
-        scanner.start(
-            { facingMode: "environment" }, 
-            { fps: 10, qrbox: 250 },
-            (text) => {
-                scanner.stop();
+    function initScanner() {
+        html5QrCode = new Html5Qrcode("qr-reader");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+            html5QrCode.stop().then(() => {
+                const ip = "192.168." + Math.floor(Math.random()*100) + "." + Math.floor(Math.random()*255);
+                const time = new Date().toLocaleTimeString();
+                
+                // Populate forensic data for the student
+                document.getElementById('forensicData').innerHTML = `
+                    <strong>User:</strong> ${currentUser}<br>
+                    <strong>IP Address:</strong> ${ip}<br>
+                    <strong>Geolocation:</strong> 2.92° N, 101.64° E (Cyberjaya)<br>
+                    <strong>Time:</strong> ${time}
+                `;
+                
+                // Send data to Tilden's admin log
+                addAuditLog(`${currentUser} scanned QR from IP ${ip}`);
                 showPage('donePage');
-            },
-            (err) => { /* Ignore constant scanning errors */ }
-        ).catch(e => alert("Camera Permission Denied or Not Secure Context"));
+            });
+        }).catch(err => alert("Camera permission required via HTTPS."));
     }
 
-    function startSession() {
+    function startLecturerSession() {
         const gen = () => {
             const container = document.getElementById("qrcode");
             container.innerHTML = "";
-            new QRCode(container, { text: "SMART-" + Date.now(), width: 200, height: 200 });
-            resetTimer(180);
+            new QRCode(container, { text: "TOKEN-" + Date.now(), width: 200, height: 200 });
+            addAuditLog("Lecturer Liang updated dynamic QR token.");
+            startTimer(180);
         };
         gen();
         if(qrRotation) clearInterval(qrRotation);
-        qrRotation = setInterval(gen, 180000); // 3 Minutes
+        qrRotation = setInterval(gen, 180000);
     }
 
-    function resetTimer(sec) {
-        const timerDiv = document.getElementById("timer");
-        let timeLeft = sec;
+    function startTimer(duration) {
+        let timer = duration, mins, secs;
+        const display = document.getElementById('timer');
         const countdown = setInterval(() => {
-            let m = Math.floor(timeLeft / 60);
-            let s = timeLeft % 60;
-            timerDiv.innerText = `Refreshing in: ${m}:${s < 10 ? '0' : ''}${s}`;
-            timeLeft--;
-            if(timeLeft < 0) clearInterval(countdown);
+            mins = parseInt(timer / 60, 10);
+            secs = parseInt(timer % 60, 10);
+            display.textContent = `Refreshes in: ${mins}:${secs < 10 ? '0' : ''}${secs}`;
+            if (--timer < 0) clearInterval(countdown);
         }, 1000);
     }
 
-    function logout() {
-        if(scanner) scanner.stop();
-        location.reload();
+    function addAuditLog(msg) {
+        const logBox = document.getElementById('auditLogs');
+        const entry = document.createElement('div');
+        entry.className = "log-entry";
+        entry.innerHTML = `<span class="audit-tag">[${new Date().toLocaleTimeString()}]</span> ${msg}`;
+        logBox.prepend(entry);
     }
+
+    function logout() { location.reload(); }
 </script>
 </body>
 </html>
