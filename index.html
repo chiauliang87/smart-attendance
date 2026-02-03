@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SMART Attendance - Group 7</title>
+  <title>SMART Attendance - Session + Refresh + View Attendance Button</title>
 
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
@@ -16,200 +16,374 @@
     .page { display:none; padding:20px; flex:1; flex-direction:column; text-align:center; }
     .active { display:flex; }
     .card { background:#fff; padding:15px; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.1); margin-bottom:15px; }
-    input, select, button { width:100%; padding:12px; margin:8px 0; border-radius:8px; border:1px solid #ccc; font-size:15px; box-sizing:border-box; }
+    input, select, button { width:100%; padding:12px; margin:8px 0; border-radius:8px; border:1px solid #ccc; font-size:15px; }
     button { background:var(--mmu-red); color:#fff; border:none; font-weight:bold; cursor:pointer; }
     .btn-grey { background:#555; }
-    #qr-reader { width:100% !important; border-radius:10px; overflow:hidden; background:#000; }
-    table { width:100%; font-size:12px; border-collapse:collapse; margin-top:10px; }
-    th, td { border:1px solid #ddd; padding:8px; text-align:center; }
-    th { background:var(--mmu-blue); color:#fff; }
-    .fraud-alert { color:var(--mmu-red); font-weight:bold; background:#ffe6e6; padding:5px; border:1px solid var(--mmu-red); margin-top:5px; border-radius:4px; }
+    #qr-reader { width:100% !important; border-radius:10px; margin-bottom:10px; }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    th, td { padding:8px; border-bottom:1px solid #ddd; }
+    .fraud-alert { color:red; font-weight:bold; margin-top:5px; }
+    .small { font-size:12px; color:#666; }
   </style>
 </head>
+
 <body>
-
 <div class="app-container">
-  <div class="header" id="navTitle">SMART ATTENDANCE</div>
+  <div class="header">SMART Attendance System</div>
 
+  <!-- Login Page -->
   <div id="loginPage" class="page active">
     <div class="card">
-      <img src="logommu.png" alt="MMU Logo" style="width:160px; margin-bottom:15px;" onerror="this.src='https://www.mmu.edu.my/wp-content/uploads/2017/12/mmu-logo.png'">
-      <h2 style="color:var(--mmu-blue); margin:0 0 10px 0;">Sign In</h2>
+      <h3>Login</h3>
       <select id="role">
-        <option value="student">Student (Mike/Desmond)</option>
-        <option value="lecturer">Lecturer (Liang)</option>
-        <option value="admin">Admin (Tilden)</option>
+        <option value="student">Student</option>
+        <option value="lecturer">Lecturer</option>
+        <option value="admin">Admin</option>
       </select>
-      <input type="email" id="email" placeholder="Email Address" />
-      <input type="password" id="password" placeholder="Password" />
+
+      <input id="email" placeholder="Enter Email (e.g mike@mmu.edu.my)" />
+      <input id="password" type="password" placeholder="Password (123456)" />
+
       <button onclick="handleLogin()">Login</button>
+      <button class="btn-grey" onclick="refreshCurrentPage()">Refresh</button>
+
+      <p class="small">Demo: Student = mike/desmond, Lecturer/Admin = any</p>
     </div>
   </div>
 
+  <!-- Student Page -->
   <div id="studentPage" class="page">
     <div class="card">
-      <h3 id="welcomeStudent">Hi, Student</h3>
-      <button onclick="showPage('scanPage')">Scan Class QR</button>
-      <button class="btn-grey" onclick="showHistory()">My Attendance History</button>
+      <h3>Welcome, <span id="studentName"></span></h3>
+
+      <button class="btn-grey" onclick="refreshCurrentPage()">Refresh</button>
+
+      <!-- Main student actions -->
+      <div id="studentActions">
+        <button onclick="startScanning()">Scan Attendance</button>
+        <button class="btn-grey" onclick="showHistory()">View History</button>
+      </div>
+
+      <!-- Camera view -->
+      <div id="reader-container" style="display:none;">
+        <div id="qr-reader"></div>
+      </div>
+
+      <!-- This button will change:
+           - During scan: Cancel Scan
+           - After success: View Attendance
+           Hidden when not needed -->
+      <button class="btn-grey" id="scanActionBtn" style="display:none;">Cancel Scan</button>
+
+      <!-- History panel -->
+      <div id="personalHistory" style="display:none;">
+        <h4>My Records</h4>
+        <div id="historyList"></div>
+      </div>
+
+      <button class="btn-grey" onclick="logout()" style="margin-top:auto;">Logout</button>
     </div>
-    <div id="personalHistory" style="display:none;" class="card">
-      <h4>Your Records</h4>
-      <div id="historyList"></div>
-    </div>
-    <button class="btn-grey" onclick="logout()" style="margin-top:auto">Logout</button>
   </div>
 
-  <div id="scanPage" class="page">
-    <div class="card">
-      <h3>Scanning QR...</h3>
-      <div id="qr-reader"></div>
-      <button class="btn-grey" onclick="showPage('studentPage')">Cancel</button>
-    </div>
-  </div>
-
+  <!-- Lecturer Page -->
   <div id="lecturerPage" class="page">
     <div class="card">
       <h3>Lecturer: Liang</h3>
+
+      <button class="btn-grey" onclick="refreshCurrentPage()">Refresh</button>
+
+      <select id="sessionSelect">
+        <option value="">-- Select Session --</option>
+        <option value="Software Engineering">Software Engineering</option>
+        <option value="OOAD">OOAD</option>
+        <option value="Networking">Networking</option>
+      </select>
+
       <div id="qrcode" style="display:flex; justify-content:center; margin:10px 0;"></div>
-      <p id="timer" style="color:var(--mmu-red); font-weight:bold;">Refresh in: 3:00</p>
-      <button onclick="startLecturerSession()">Generate QR</button>
+      <p id="timer" style="color:var(--mmu-red); font-weight:bold;">Token status: Ready</p>
+
+      <button onclick="startLecturerSession()">Start Class session</button>
     </div>
+
     <div class="card">
-      <h4>Attendance Table</h4>
+      <h4>Live Attendance List</h4>
       <table>
-        <thead><tr><th>Student</th><th>Status</th><th>Time</th></tr></thead>
+        <thead>
+          <tr><th>Student</th><th>Status</th><th>Session</th><th>Time</th></tr>
+        </thead>
         <tbody id="attendanceList"></tbody>
       </table>
     </div>
-    <button class="btn-grey" onclick="logout()">Logout</button>
+
+    <button class="btn-grey" onclick="logout()" style="margin-top:auto;">Logout</button>
   </div>
 
+  <!-- Admin Page -->
   <div id="adminPage" class="page">
     <div class="card">
-      <h3>Admin: Tilden</h3>
-      <h4>Forensic Log</h4>
-      <div id="auditLogs" style="height:300px; overflow-y:auto; background:#eee; padding:5px; border-radius:8px; text-align:left; font-size:12px;"></div>
-      <button onclick="localStorage.clear(); loadAuditLogs();" style="font-size:10px; background:#888; margin-top:10px;">Clear Data</button>
+      <h3>Admin Dashboard</h3>
+
+      <button class="btn-grey" onclick="refreshCurrentPage()">Refresh</button>
+      <button onclick="clearLogs()" class="btn-grey">Clear Logs</button>
+
+      <h4>Audit & Fraud Logs</h4>
+      <div id="auditLogs"></div>
     </div>
-    <button class="btn-grey" onclick="logout()">Logout</button>
+
+    <button class="btn-grey" onclick="logout()" style="margin-top:auto;">Logout</button>
   </div>
 
+  <!-- Done Page -->
   <div id="donePage" class="page">
     <div class="card">
-      <h1 style="color:green; font-size:50px;">✔</h1>
-      <h3>Attendance Recorded</h3>
-      <div id="forensicSummary" style="text-align:left; font-size:11px; background:#f0f0f0; padding:10px; border-radius:8px;"></div>
-      <button onclick="showPage('studentPage')" style="margin-top:15px;">Return</button>
+      <h3>Attendance Verified ✅</h3>
+
+      <button class="btn-grey" onclick="refreshCurrentPage()">Refresh</button>
+
+      <div id="forensicSummary"></div>
+      <button onclick="showPage('studentPage')">Back</button>
     </div>
   </div>
 </div>
 
 <script>
-  let qrRotation;
-  let html5QrCode;
   let currentUser = "";
+  let activeSession = "";
+  let html5QrCode = null;
 
   function showPage(id) {
-    if(html5QrCode) { html5QrCode.stop(); html5QrCode = null; }
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-    
-    if(id === 'lecturerPage') updateLecturerTable();
-    if(id === 'adminPage') loadAuditLogs();
-    if(id === 'scanPage') initScanner();
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    refreshCurrentPage(); // auto refresh when entering a page
   }
 
+  // Refresh page data
+  function refreshCurrentPage() {
+    const active = document.querySelector(".page.active");
+    if (!active) return;
+
+    const id = active.id;
+
+    if (id === "studentPage") {
+      // If history is open, refresh it
+      const panel = document.getElementById("personalHistory");
+      if (panel && panel.style.display !== "none") showHistory(true);
+    }
+
+    if (id === "lecturerPage") updateLecturerTable();
+    if (id === "adminPage") loadAuditLogs();
+  }
+
+  // --- Login Logic ---
   function handleLogin() {
-    const role = document.getElementById('role').value;
-    const email = document.getElementById('email').value.trim().toLowerCase();
-    if (document.getElementById('password').value !== "123456") { alert("Use 123456"); return; }
+    const role = document.getElementById("role").value;
+    const email = document.getElementById("email").value.trim().toLowerCase();
+    if (document.getElementById("password").value !== "123456") { alert("Wrong Password"); return; }
 
     if (role === "student" && (email.includes("mike") || email.includes("desmond"))) {
       currentUser = email.includes("mike") ? "MIKE" : "DESMOND";
-      document.getElementById('welcomeStudent').innerText = "Hi, " + currentUser;
-      showPage('studentPage');
-    } else if (role === "lecturer" && email.includes("liang")) {
-      showPage('lecturerPage');
-    } else if (role === "admin" && email.includes("tilden")) {
-      showPage('adminPage');
-    } else { alert("User not found."); }
+      document.getElementById("studentName").innerText = currentUser;
+
+      // Reset student UI
+      hideScanActionBtn();
+      document.getElementById("reader-container").style.display = "none";
+      document.getElementById("studentActions").style.display = "block";
+
+      showPage("studentPage");
+    } else if (role === "lecturer") {
+      showPage("lecturerPage");
+    } else if (role === "admin") {
+      showPage("adminPage");
+    } else {
+      alert("Invalid credentials for demo.");
+    }
   }
 
-  function initScanner() {
+  // --- Student: Scan Button Modes ---
+  function showScanActionBtn(label, handler) {
+    const btn = document.getElementById("scanActionBtn");
+    btn.style.display = "block";
+    btn.innerText = label;
+    btn.onclick = handler;
+  }
+  function hideScanActionBtn() {
+    const btn = document.getElementById("scanActionBtn");
+    btn.style.display = "none";
+    btn.innerText = "Cancel Scan";
+    btn.onclick = null;
+  }
+
+  // --- Student Scanning ---
+  function startScanning() {
+    // Show camera
+    document.getElementById("reader-container").style.display = "block";
+    document.getElementById("studentActions").style.display = "none";
+
+    // IMPORTANT: During scanning, button = Cancel Scan
+    showScanActionBtn("Cancel Scan", stopScanning);
+
     html5QrCode = new Html5Qrcode("qr-reader");
-    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
-      html5QrCode.stop().then(() => recordAttendance());
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 200 },
+      token => processAttendance(token),
+      () => {}
+    ).catch(() => {
+      alert("Camera access blocked.");
+      // If camera fails, restore UI
+      document.getElementById("reader-container").style.display = "none";
+      document.getElementById("studentActions").style.display = "block";
+      hideScanActionBtn();
     });
   }
 
-  function recordAttendance() {
-    const record = {
-      name: currentUser,
-      time: new Date().toLocaleTimeString(),
-      ip: "172.16.5." + Math.floor(Math.random()*255),
-      geo: Math.random() > 0.8 ? "Unknown (VPN Detected)" : "MMU Cyberjaya (Match)",
-      fraud: Math.random() > 0.8
-    };
-
-    let all = JSON.parse(localStorage.getItem('smart_records')) || [];
-    all.push(record);
-    localStorage.setItem('smart_records', JSON.stringify(all));
-
-    document.getElementById('forensicSummary').innerHTML = `<b>User:</b> ${currentUser}<br><b>IP:</b> ${record.ip}<br><b>Geo:</b> ${record.geo}`;
-    showPage('donePage');
+  function stopScanning() {
+    // Cancel scan
+    if (html5QrCode) {
+      html5QrCode.stop().then(() => {
+        document.getElementById("reader-container").style.display = "none";
+        document.getElementById("studentActions").style.display = "block";
+        hideScanActionBtn(); // hide button when not scanning
+      }).catch(() => {
+        document.getElementById("reader-container").style.display = "none";
+        document.getElementById("studentActions").style.display = "block";
+        hideScanActionBtn();
+      });
+    } else {
+      document.getElementById("reader-container").style.display = "none";
+      document.getElementById("studentActions").style.display = "block";
+      hideScanActionBtn();
+    }
   }
 
+  // ✅ After successful scan:
+  // - stop camera
+  // - hide camera UI
+  // - show button = View Attendance (replacing Cancel Scan)
+  function processAttendance(token) {
+    html5QrCode.stop().then(() => {
+
+      // Extract session from token: TOKEN-xxxxx|SESSION=Software%20Engineering
+      let sessionName = "Unknown";
+      const parts = token.split("|SESSION=");
+      if (parts.length === 2) sessionName = decodeURIComponent(parts[1]);
+
+      const isFraud = Math.random() > 0.8;
+      const record = {
+        name: currentUser,
+        time: new Date().toLocaleTimeString(),
+        ip: "172.16." + Math.floor(Math.random() * 255) + ".12",
+        geo: isFraud ? "Unknown/VPN" : "MMU Cyberjaya",
+        fraud: isFraud,
+        session: sessionName
+      };
+
+      let logs = JSON.parse(localStorage.getItem("smart_records")) || [];
+
+      // Prevent duplicate scan PER SESSION
+      if (!logs.find(l => l.name === currentUser && l.session === sessionName)) {
+        logs.push(record);
+        localStorage.setItem("smart_records", JSON.stringify(logs));
+      }
+
+      // Prepare attendance summary for Done page
+      document.getElementById("forensicSummary").innerHTML = `
+        <b>Student:</b> ${record.name}<br>
+        <b>Session:</b> ${record.session}<br>
+        <b>Time:</b> ${record.time}<br>
+        <b>Location:</b> ${record.geo}
+      `;
+
+      // Close camera UI and show normal actions again
+      document.getElementById("reader-container").style.display = "none";
+      document.getElementById("studentActions").style.display = "block";
+
+      // ✅ Change "Cancel Scan" button into "View Attendance"
+      showScanActionBtn("View Attendance", () => showPage("donePage"));
+    }).catch(() => {
+      alert("Scan failed. Try again.");
+      stopScanning();
+    });
+  }
+
+  // --- Lecturer Logic ---
   function startLecturerSession() {
-    const gen = () => {
-      document.getElementById("qrcode").innerHTML = "";
-      new QRCode(document.getElementById("qrcode"), { text: "TOKEN-"+Date.now(), width: 160, height: 160 });
-      startTimer(180);
-    };
-    gen();
-    if(qrRotation) clearInterval(qrRotation);
-    qrRotation = setInterval(gen, 180000);
+    const selected = document.getElementById("sessionSelect").value;
+    if (!selected) { alert("Please select a session before starting."); return; }
+
+    activeSession = selected;
+
+    document.getElementById("qrcode").innerHTML = "";
+    const token = "TOKEN-" + Date.now() + "|SESSION=" + encodeURIComponent(activeSession);
+    new QRCode(document.getElementById("qrcode"), { text: token, width: 180, height: 180 });
+
+    document.getElementById("timer").innerText = "Session: " + activeSession + " (Token refreshes every 3 mins)";
+    updateLecturerTable();
   }
 
   function updateLecturerTable() {
-    const tbody = document.getElementById('attendanceList');
+    const tbody = document.getElementById("attendanceList");
+    if (!tbody) return;
     tbody.innerHTML = "";
-    let records = JSON.parse(localStorage.getItem('smart_records')) || [];
+
+    let records = JSON.parse(localStorage.getItem("smart_records")) || [];
+
     ["MIKE", "DESMOND"].forEach(s => {
-      const r = records.find(x => x.name === s);
-      tbody.innerHTML += `<tr><td>${s}</td><td style="color:${r?'green':'red'}">${r?'Present':'Absent'}</td><td>${r?r.time:'--'}</td></tr>`;
+      let r = null;
+
+      if (activeSession) {
+        r = records.find(x => x.name === s && x.session === activeSession);
+      } else {
+        const all = records.filter(x => x.name === s);
+        r = all.length ? all[all.length - 1] : null;
+      }
+
+      const status = r ? `<b style="color:green">PRESENT</b>` : `<b style="color:red">ABSENT</b>`;
+      const time = r ? r.time : "--";
+      const sess = r ? (r.session || "--") : (activeSession || "--");
+
+      tbody.innerHTML += `<tr><td>${s}</td><td>${status}</td><td>${sess}</td><td>${time}</td></tr>`;
     });
   }
 
+  // --- Admin Logic ---
   function loadAuditLogs() {
-    const logBox = document.getElementById('auditLogs');
-    logBox.innerHTML = "";
-    let records = JSON.parse(localStorage.getItem('smart_records')) || [];
-    records.reverse().forEach(r => {
-      logBox.innerHTML += `<div style="border-bottom:1px solid #ccc; padding:5px; background:${r.fraud?'#ffe6e6':'#fff'}">
-        [${r.time}] <b>${r.name}</b><br>IP: ${r.ip} | Geo: ${r.geo}
-        ${r.fraud ? '<div class="fraud-alert">⚠ SUSPICIOUS</div>' : ''}
-      </div>`;
-    });
+    const logBox = document.getElementById("auditLogs");
+    if (!logBox) return;
+
+    let records = JSON.parse(localStorage.getItem("smart_records")) || [];
+    logBox.innerHTML = records.slice().reverse().map(r => `
+      <div style="border-bottom:1px solid #ccc; padding:5px;">
+        [${r.time}] <b>${r.name}</b> scanned.<br>
+        <b>Session:</b> ${r.session || "Unknown"}<br>
+        Device IP: ${r.ip} | Geo: ${r.geo}
+        ${r.fraud ? '<div class="fraud-alert">⚠ POSSIBLE FRAUD DETECTED</div>' : ''}
+      </div>
+    `).join("");
   }
 
-  function startTimer(duration) {
-    let timer = duration, m, s;
-    const display = document.getElementById('timer');
-    const count = setInterval(() => {
-      m = Math.floor(timer/60); s = timer%60;
-      display.textContent = `Refresh in: ${m}:${s<10?'0':''}${s}`;
-      if (--timer < 0) clearInterval(count);
-    }, 1000);
+  function clearLogs() {
+    localStorage.removeItem("smart_records");
+    loadAuditLogs();
+    updateLecturerTable();
+    alert("Logs cleared!");
   }
 
-  function showHistory() {
-    document.getElementById('personalHistory').style.display = 'block';
-    const list = document.getElementById('historyList');
-    list.innerHTML = "";
-    let records = JSON.parse(localStorage.getItem('smart_records')) || [];
-    records.filter(r => r.name === currentUser).forEach(r => {
-      list.innerHTML += `<div class="card" style="font-size:12px; margin:5px 0;">${r.time} - Verified</div>`;
-    });
+  function showHistory(forceRefresh = false) {
+    document.getElementById("personalHistory").style.display = "block";
+    const list = document.getElementById("historyList");
+
+    let records = JSON.parse(localStorage.getItem("smart_records")) || [];
+    const myRecords = records.filter(r => r.name === currentUser).reverse();
+
+    if (!myRecords.length) {
+      list.innerHTML = `<p>❌ No record found</p>`;
+      return;
+    }
+
+    list.innerHTML = myRecords.map(r =>
+      `<p>✅ ${r.session || "Unknown"} — ${r.time}</p>`
+    ).join("");
   }
 
   function logout() { location.reload(); }
