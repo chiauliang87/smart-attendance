@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SMART Attendance - MMU</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { margin: 0; background: #0a2f5a; font-family: sans-serif; display: flex; justify-content: center; }
+        .phone-container { width: 100%; max-width: 400px; height: 100vh; background: #a8beda; position: relative; overflow-y: auto; }
+        .page { display: none; padding: 20px; text-align: center; }
+        .active { display: block; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-top: 20px; }
+        input, select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-size: 16px; }
+        button { background: #ce2029; color: white; border: none; font-weight: bold; cursor: pointer; }
+        #qr-reader { width: 100%; border-radius: 10px; margin-top: 10px; background: black; }
+        #qrcode img { margin: 0 auto; }
+        .timer { color: #ce2029; font-weight: bold; margin: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="phone-container">
+    <div id="loginPage" class="page active">
+        <div class="card">
+            <img src="https://www.mmu.edu.my/wp-content/uploads/2017/12/mmu-logo.png" style="width:120px; margin-bottom:10px;">
+            <h2>SMART Login</h2>
+            <select id="role">
+                <option value="student">Student</option>
+                <option value="lecturer">Lecturer</option>
+            </select>
+            <input type="email" id="email" placeholder="Email (liang@...)" autocomplete="off">
+            <input type="password" id="password" placeholder="Password (123456)">
+            <button onclick="handleLogin()">Login</button>
+            <p style="font-size:12px; color:#666;">Note: Ensure "L" in liang is lowercase.</p>
+        </div>
+    </div>
+
+    <div id="studentPage" class="page">
+        <div class="card">
+            <h3>Student Scanner</h3>
+            <div id="qr-reader"></div>
+            <button onclick="logout()" style="background:#666;">Logout</button>
+        </div>
+    </div>
+
+    <div id="lecturerPage" class="page">
+        <div class="card">
+            <h3>Lecturer View</h3>
+            <div id="qrcode"></div>
+            <div class="timer" id="timer">Refreshing in: 3:00</div>
+            <button onclick="startSession()">Start 3-Min Refresh</button>
+            <button onclick="logout()" style="background:#666;">Logout</button>
+        </div>
+    </div>
+
+    <div id="donePage" class="page">
+        <div class="card">
+            <h1 style="color:green;">✔</h1>
+            <h2>Attendance Recorded</h2>
+            <p>Verification: Device ID & Location Logged.</p>
+            <button onclick="location.reload()">Return Home</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let qrRotation;
+    let scanner;
+
+    function showPage(id) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function handleLogin() {
+        const role = document.getElementById('role').value;
+        const email = document.getElementById('email').value.trim().toLowerCase();
+        const pass = document.getElementById('password').value;
+
+        // Validation for Liang's credentials
+        if (pass !== "123456") {
+            alert("Error: Incorrect Password");
+            return;
+        }
+
+        if (role === "student" && email === "liang@student.mmu.edu.my") {
+            showPage('studentPage');
+            startCamera();
+        } else if (role === "lecturer" && email === "liang@lecturer.mmu.edu.my") {
+            showPage('lecturerPage');
+        } else {
+            alert("Error: Email and Role do not match.");
+        }
+    }
+
+    function startCamera() {
+        scanner = new Html5Qrcode("qr-reader");
+        scanner.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: 250 },
+            (text) => {
+                scanner.stop();
+                showPage('donePage');
+            },
+            (err) => { /* Ignore constant scanning errors */ }
+        ).catch(e => alert("Camera Permission Denied or Not Secure Context"));
+    }
+
+    function startSession() {
+        const gen = () => {
+            const container = document.getElementById("qrcode");
+            container.innerHTML = "";
+            new QRCode(container, { text: "SMART-" + Date.now(), width: 200, height: 200 });
+            resetTimer(180);
+        };
+        gen();
+        if(qrRotation) clearInterval(qrRotation);
+        qrRotation = setInterval(gen, 180000); // 3 Minutes
+    }
+
+    function resetTimer(sec) {
+        const timerDiv = document.getElementById("timer");
+        let timeLeft = sec;
+        const countdown = setInterval(() => {
+            let m = Math.floor(timeLeft / 60);
+            let s = timeLeft % 60;
+            timerDiv.innerText = `Refreshing in: ${m}:${s < 10 ? '0' : ''}${s}`;
+            timeLeft--;
+            if(timeLeft < 0) clearInterval(countdown);
+        }, 1000);
+    }
+
+    function logout() {
+        if(scanner) scanner.stop();
+        location.reload();
+    }
+</script>
+</body>
+</html>
